@@ -72,25 +72,29 @@ def get_rocketlab_urls():
 
 def get_capella_urls():
     """
-    Return absolute URLs of cards that contain the text “Press Release”.
-    More tolerant than relying on fragile class names.
+    Call Capella’s hidden WP AJAX endpoint to fetch *Press Releases*.
     """
     base = "https://www.capellaspace.com"
-    res  = requests.get(f"{base}/media", headers=HEADERS, timeout=30)
-    soup = BeautifulSoup(res.text, "html.parser")
+    api  = f"{base}/wp-admin/admin-ajax.php"
 
-    count_total = 0
-    count_match = 0
+    payload = {
+        "action": "filter_resources",
+        "category[]": "press-releases",   # ← JSON key from DevTools
+        "paged": 1
+    }
+    try:
+        r = requests.post(api, data=payload, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        data = r.json()                      # { resources: [ { url: … }, … ] }
 
-    for card in soup.select("a.resource-card"):
-        count_total += 1
-        # card.get_text() flattens all text inside the <a> tag
-        if "press release" in card.get_text(" ", strip=True).lower():
-            count_match += 1
-            yield urljoin(base, card["href"])
+        for item in data.get("resources", []):
+            yield item["url"]
 
-    logging.info("Capella: scanned %s cards, matched %s press-releases",
-                 count_total, count_match)
+        logging.info("Capella API returned %s press releases",
+                     len(data.get("resources", [])))
+    except Exception as e:
+        logging.error("Capella API error: %s", e)
+
 
 
 
