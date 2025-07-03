@@ -13,7 +13,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from newspaper import Article, Config
-from urllib.parse import urljoin
+
 
 # ---------- 1. SETTINGS you may touch ---------------------------------------
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
@@ -33,8 +33,12 @@ SUMMARY_SENTENCES = 3              # ≈100 tokens
 # ---------------------------------------------------------------------------
 
 
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s  %(levelname)s  %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)s  %(message)s",
+    force=True          # ← overwrites any previous logging setup
+)
+
 
 def load_cache():
     if os.path.isfile(CACHE_FILE):
@@ -107,26 +111,27 @@ SCRAPER_FUNCS = [
 ]
 
 # ---------- 3. SUMMARY ------------------------------------------------------
-def summarise(url: str) -> tuple[str, str]:
+def summarise(url: str, fallback_text: str = "") -> tuple[str, str]:
     """
-    Download the article and return (title, ≤100-token preview).
-    No NLTK; just take the first ~100 words of the cleaned text.
+    Try to download the full article; if that fails, use the fallback_text
+    provided by the RSS/JSON feed.  Always return (title, ≤100-token preview).
     """
     cfg = Config(); cfg.request_headers = HEADERS
     art = Article(url, language="en", config=cfg)
-    art.download(); art.parse()
+    try:
+        art.download(); art.parse()
+        title = art.title or "Untitled"
+        words = art.text.replace("\n", " ").split()
+        preview = " ".join(words[:100]) or "(no preview)"
+    except Exception as e:
+        logging.warning("Fallback to feed text for %s  (%s)", url, e)
+        title = "Untitled (feed)"
+        preview = fallback_text[:500] or "(no preview)"
 
-    title = art.title or "Untitled"
-    words = art.text.replace("\n", " ").split()
-
-    if not words:
-        return title, "Summary unavailable."
-
-    preview = " ".join(words[:100])
-    if preview[-1] not in ".!?":
+    if preview and preview[-1] not in ".!?":
         preview += "…"
-
     return title, preview
+
 
 # ---------- 4. SLACK --------------------------------------------------------
 def send_slack(title: str, summary: str, url: str):
