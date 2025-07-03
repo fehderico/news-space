@@ -17,6 +17,9 @@ jobs:
           python-version: '3.10'
 
       - run: pip install -r requirements.txt
+      - name: Install Playwright browsers
+      run: python -m playwright install --with-deps chromium
+
 
       - name: Run bot
         env:
