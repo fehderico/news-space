@@ -72,6 +72,23 @@ def render_and_get_links(url, selector, max_links=30):
         links = page.locator(selector).evaluate_all("els => els.map(e => e.href)")
         browser.close()
         return links[:max_links]
+
+def click_then_get_links(url, click_text, card_selector, max_links=30):
+    """
+    • Open `url` in headless Chromium
+    • Click the button whose visible text is `click_text`
+    • After network is idle, collect hrefs that match `card_selector`
+    """
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(url, wait_until="networkidle", timeout=30000)
+        page.click(f"text={click_text}", timeout=10000)
+        page.wait_for_load_state("networkidle", timeout=30000)
+        links = page.locator(card_selector).evaluate_all("els=>els.map(e=>e.href)")
+        browser.close()
+        return links[:max_links]
+
 # ------------------------------------------------------------------------------
 
 def get_iceye_urls():
@@ -89,9 +106,18 @@ def get_rocketlab_urls():
             yield urljoin(SOURCES["rocketlab"], a["href"])
 
 def get_capella_urls():
-    # render /media then return every card link
+    """
+    1. Load /media
+    2. Click the "Press Releases" filter
+    3. Scrape each card link
+    """
     url = "https://www.capellaspace.com/media"
-    return render_and_get_links(url, "a.resource-card")
+    links = click_then_get_links(url,
+                                 click_text="Press Releases",
+                                 card_selector="a.resource-card-link")
+    logging.info("Capella click-agent got %s links", len(links))
+    return links
+
 
 def get_spacewatch_urls():
     # render /news front page; pick headline links
