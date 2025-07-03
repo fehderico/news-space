@@ -10,6 +10,7 @@ import json, re, time, hashlib, os, logging
 import requests
 import feedparser
 from urllib.parse import urljoin
+from playwright.sync_api import sync_playwright
 
 from bs4 import BeautifulSoup
 from newspaper import Article, Config
@@ -58,6 +59,21 @@ def hash_url(url: str) -> str:
 # ---------- 2. SCRAPERS -----------------------------------------------------
 HEADERS = {"User-Agent": "space-news-bot (+https://github.com/yourrepo)"}
 
+# ---------- Playwright helper ------------------------------------------------
+def render_and_get_links(url, selector, max_links=30):
+    """
+    Open the page in headless Chromium, wait for JS to load, return the first
+    max_links hrefs that match CSS selector.
+    """
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(url, wait_until="networkidle", timeout=30000)
+        links = page.locator(selector).evaluate_all("els => els.map(e => e.href)")
+        browser.close()
+        return links[:max_links]
+# ------------------------------------------------------------------------------
+
 def get_iceye_urls():
     soup = BeautifulSoup(requests.get(SOURCES["iceye"], headers=HEADERS,
                                       timeout=20).text, "html.parser")
@@ -73,34 +89,15 @@ def get_rocketlab_urls():
             yield urljoin(SOURCES["rocketlab"], a["href"])
 
 def get_capella_urls():
-    """
-    Scrape the category archive page for press-release permalinks.
-    """
-    base = "https://www.capellaspace.com"
-    url  = f"{base}/category/press-releases/"
-    html = requests.get(url, headers=HEADERS, timeout=20).text
-    soup = BeautifulSoup(html, "html.parser")
-
-    links = [a["href"] for a in soup.select("h2.entry-title a[href]")]
-    logging.info("Capella: found %s press-release links", len(links))
-    for link in links:
-        yield link                   # already absolute
-
-
-
+    # render /media then return every card link
+    url = "https://www.capellaspace.com/media"
+    return render_and_get_links(url, "a.resource-card")
 
 def get_spacewatch_urls():
-    """
-    Scrape https://spacewatch.global/news/ for article links.
-    """
-    base = "https://spacewatch.global"
-    html = requests.get(f"{base}/news/", headers=HEADERS, timeout=20).text
-    soup = BeautifulSoup(html, "html.parser")
+    # render /news front page; pick headline links
+    url = "https://spacewatch.global/news/"
+    return render_and_get_links(url, "h3.entry-title a")
 
-    links = [a["href"] for a in soup.select("h3.entry-title a[href]")]
-    logging.info("SpaceWatch: found %s article links", len(links))
-    for link in links:
-        yield urljoin(base, link)
 
 
 
