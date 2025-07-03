@@ -36,8 +36,9 @@ SUMMARY_SENTENCES = 3              # ≈100 tokens
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)s  %(message)s",
-    force=True          # ← overwrites any previous logging setup
+    force=True,          # overwrite any prior setup
 )
+
 
 
 def load_cache():
@@ -72,42 +73,43 @@ def get_rocketlab_urls():
 
 def get_capella_urls():
     """
-    Call Capella’s hidden WP AJAX endpoint to fetch *Press Releases*.
+    Fetch latest Capella press releases via WP REST API (no POST, no nonce).
     """
     base = "https://www.capellaspace.com"
-    api  = f"{base}/wp-admin/admin-ajax.php"
-
-    payload = {
-        "action": "filter_resources",
-        "category[]": "press-releases",   # ← JSON key from DevTools
-        "paged": 1
-    }
+    cat_api  = f"{base}/wp-json/wp/v2/categories"
+    post_api = f"{base}/wp-json/wp/v2/posts"
     try:
-        r = requests.post(api, data=payload, headers=HEADERS, timeout=20)
-        r.raise_for_status()
-        data = r.json()                      # { resources: [ { url: … }, … ] }
+        cats = requests.get(cat_api, params={"search": "press", "per_page": 100},
+                            headers=HEADERS, timeout=20).json()
+        press_id = next(c["id"] for c in cats
+                        if "press" in c["slug"] and "release" in c["slug"])
 
-        for item in data.get("resources", []):
-            yield item["url"]
+        posts = requests.get(post_api,
+                             params={"categories": press_id,
+                                     "per_page": 20,
+                                     "_fields": "link"},
+                             headers=HEADERS, timeout=20).json()
 
-        logging.info("Capella API returned %s press releases",
-                     len(data.get("resources", [])))
+        logging.info("Capella REST returned %s press releases", len(posts))
+        for p in posts:
+            yield p["link"]
+
     except Exception as e:
-        logging.error("Capella API error: %s", e)
-
-
-
+        logging.error("Capella REST failed: %s", e)
 
 
 
 
 def get_spacewatch_urls():
     """
-    Reads Spacewatch Global news RSS feed.
+    Scrape https://spacewatch.global/news/ for article links.
     """
-    feed = feedparser.parse("https://spacewatch.global/news/feed/")
-    for entry in feed.entries:
-        yield entry.link
+    base = "https://spacewatch.global"
+    html = requests.get(f"{base}/news/", headers=HEADERS, timeout=20).text
+    soup = BeautifulSoup(html, "html.parser")
+    for h2 in soup.select("h2.entry-title a[href]"):
+        yield urljoin(base, h2["href"])
+
 
 
 SCRAPER_FUNCS = [
