@@ -36,8 +36,9 @@ SUMMARY_SENTENCES = 3              # ≈100 tokens
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)s  %(message)s",
-    force=True,          # overwrite any prior setup
+    force=True,      # ensures INFO actually prints
 )
+
 
 
 
@@ -73,29 +74,17 @@ def get_rocketlab_urls():
 
 def get_capella_urls():
     """
-    Fetch latest Capella press releases via WP REST API (no POST, no nonce).
+    Scrape the category archive page for press-release permalinks.
     """
     base = "https://www.capellaspace.com"
-    cat_api  = f"{base}/wp-json/wp/v2/categories"
-    post_api = f"{base}/wp-json/wp/v2/posts"
-    try:
-        cats = requests.get(cat_api, params={"search": "press", "per_page": 100},
-                            headers=HEADERS, timeout=20).json()
-        press_id = next(c["id"] for c in cats
-                        if "press" in c["slug"] and "release" in c["slug"])
+    url  = f"{base}/category/press-releases/"
+    html = requests.get(url, headers=HEADERS, timeout=20).text
+    soup = BeautifulSoup(html, "html.parser")
 
-        posts = requests.get(post_api,
-                             params={"categories": press_id,
-                                     "per_page": 20,
-                                     "_fields": "link"},
-                             headers=HEADERS, timeout=20).json()
-
-        logging.info("Capella REST returned %s press releases", len(posts))
-        for p in posts:
-            yield p["link"]
-
-    except Exception as e:
-        logging.error("Capella REST failed: %s", e)
+    links = [a["href"] for a in soup.select("h2.entry-title a[href]")]
+    logging.info("Capella: found %s press-release links", len(links))
+    for link in links:
+        yield link                   # already absolute
 
 
 
@@ -107,8 +96,12 @@ def get_spacewatch_urls():
     base = "https://spacewatch.global"
     html = requests.get(f"{base}/news/", headers=HEADERS, timeout=20).text
     soup = BeautifulSoup(html, "html.parser")
-    for h2 in soup.select("h2.entry-title a[href]"):
-        yield urljoin(base, h2["href"])
+
+    links = [a["href"] for a in soup.select("h3.entry-title a[href]")]
+    logging.info("SpaceWatch: found %s article links", len(links))
+    for link in links:
+        yield urljoin(base, link)
+
 
 
 
