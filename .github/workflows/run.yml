@@ -2,7 +2,8 @@ name: scrape-and-post
 
 on:
   schedule:
-    - cron: '15 */3 * * *'       # every 3 h at hh:15 Paris time
+    # every 3 hours at hh:15 Paris time
+    - cron: '15 */3 * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,21 +11,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # — 1. check out repo ---------------------------------------------------
       - uses: actions/checkout@v4
 
+      # — 2. Python 3.10 ------------------------------------------------------
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
+      # — 3. project dependencies (incl. playwright, torch, transformers …) --
       - run: pip install -r requirements.txt
 
-      - name: Install libasound2t64
-        run: sudo apt-get update && sudo apt-get install -y libasound2t64
+      # — 4. Ubuntu libs Playwright/Firefox need ------------------------------
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2t64 \
+            libgtk-3-0 \
+            libdbus-glib-1-2
 
+      # — 5. download headless Firefox for Playwright -------------------------
       - name: Install Playwright browsers
-        run: python -m playwright install chromium
+        run: python -m playwright install firefox
 
+      # — 6. run the existing Slack bot (ICEYE, Rocket Lab, etc.) -------------
       - name: Run bot
         env:
           WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_2 }}
         run: python news_bot.py
+
+      # — 7. run the Capella click-and-scrape agent ---------------------------
+      - name: Run Capella scraper
+        env:
+          HF_HOME: /tmp/hf_cache        # cache the summariser model
+        run: python capella_scraper.py
+
+      # — 8. save the generated JSONL as an artifact --------------------------
+      - name: Upload Capella JSONL
+        uses: actions/upload-artifact@v4
+        with:
+          name: capella-jsonl
+          path: capella_media.jsonl
