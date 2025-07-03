@@ -72,23 +72,26 @@ def get_rocketlab_urls():
 
 def get_capella_urls():
     """
-    Scrape https://www.capellaspace.com/media and yield the absolute URLs
-    of cards whose chip reads “Press Releases”.
-    A one-line debug log shows the HTTP status and raw HTML size so we can
-    see at a glance whether the request succeeded and returned content.
+    Return absolute URLs of cards that contain the text “Press Release”.
+    More tolerant than relying on fragile class names.
     """
     base = "https://www.capellaspace.com"
     res  = requests.get(f"{base}/media", headers=HEADERS, timeout=30)
-
-    logging.info("Capella status %s, length %s bytes",
-                 res.status_code, len(res.text))          # DEBUG
-
     soup = BeautifulSoup(res.text, "html.parser")
 
+    count_total = 0
+    count_match = 0
+
     for card in soup.select("a.resource-card"):
-        tag = card.select_one("div.category-tag")         # chip <div> text
-        if tag and tag.get_text(strip=True).lower() == "press releases":
+        count_total += 1
+        # card.get_text() flattens all text inside the <a> tag
+        if "press release" in card.get_text(" ", strip=True).lower():
+            count_match += 1
             yield urljoin(base, card["href"])
+
+    logging.info("Capella: scanned %s cards, matched %s press-releases",
+                 count_total, count_match)
+
 
 
 
