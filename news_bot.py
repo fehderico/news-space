@@ -173,4 +173,9 @@ def main():
     # after the outer loop finishes
     save_cache(seen.union(new_seen))
 
+# ---------- 6. ENTRY POINT --------------------------------------------------
+if __name__ == "__main__":
+    main()
+
+
 
