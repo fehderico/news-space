@@ -3,3 +3,4 @@ beautifulsoup4
 newspaper3k
 pyyaml
 lxml_html_clean
+feedparser
