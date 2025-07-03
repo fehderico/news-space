@@ -17,12 +17,11 @@ jobs:
           python-version: '3.10'
 
       - run: pip install -r requirements.txt
-      - name: Install Playwright browsers
-      run: python -m playwright install --with-deps chromium
 
+      - name: Install Playwright browsers        # ← step header
+        run: python -m playwright install --with-deps chromium   # ← indented run
 
       - name: Run bot
         env:
           WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_2 }}
         run: python news_bot.py
-
