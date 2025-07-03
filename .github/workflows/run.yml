@@ -18,8 +18,11 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Install Playwright browsers        # ← step header
-        run: python -m playwright install --with-deps chromium   # ← indented run
+      - name: Install libasound2t64
+        run: sudo apt-get update && sudo apt-get install -y libasound2t64
+
+      - name: Install Playwright browsers
+        run: python -m playwright install chromium
 
       - name: Run bot
         env:
