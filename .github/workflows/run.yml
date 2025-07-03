@@ -19,10 +19,10 @@ jobs:
         with:
           python-version: '3.10'
 
-      # — 3. project dependencies (incl. playwright, torch, transformers …) --
+      # — 3. install project dependencies (Playwright, Torch, Transformers …) -
       - run: pip install -r requirements.txt
 
-      # — 4. Ubuntu libs Playwright/Firefox need ------------------------------
+      # — 4. Ubuntu libs Playwright browsers need -----------------------------
       - name: Install system packages
         run: |
           sudo apt-get update
@@ -31,25 +31,9 @@ jobs:
             libgtk-3-0 \
             libdbus-glib-1-2
 
-      # — 5. download headless Firefox for Playwright -------------------------
+      # — 5. download headless Chromium **and** Firefox -----------------------
       - name: Install Playwright browsers
-        run: python -m playwright install firefox
+        run: python -m playwright install chromium firefox
 
-      # — 6. run the existing Slack bot (ICEYE, Rocket Lab, etc.) -------------
+      # — 6. run the existing Slack bot (ICEYE, Rocket Lab, …) ----------------
       - name: Run bot
-        env:
-          WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_2 }}
-        run: python news_bot.py
-
-      # — 7. run the Capella click-and-scrape agent ---------------------------
-      - name: Run Capella scraper
-        env:
-          HF_HOME: /tmp/hf_cache        # cache the summariser model
-        run: python capella_scraper.py
-
-      # — 8. save the generated JSONL as an artifact --------------------------
-      - name: Upload Capella JSONL
-        uses: actions/upload-artifact@v4
-        with:
-          name: capella-jsonl
-          path: capella_media.jsonl
