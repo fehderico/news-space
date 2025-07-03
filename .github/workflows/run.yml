@@ -1,0 +1,19 @@
+name: scrape-and-post
+
+on:
+  schedule:
+    - cron:  '15 */3 * * *'      # every 3 h at hh:15 Paris time
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install -r requirements.txt
+      - env:
+          WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python news_bot.py
