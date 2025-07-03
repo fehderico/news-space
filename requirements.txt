@@ -6,3 +6,9 @@ pyyaml
 playwright==1.43.0
 lxml_html_clean
 
+torch==2.2.2           # CPU-only build (fits GH runner)
+transformers==4.40.2
+accelerate==0.28.0
+sentencepiece==0.2.0
+lxml==5.2.1
+
