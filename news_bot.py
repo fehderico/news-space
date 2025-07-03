@@ -22,6 +22,9 @@ SUMMARY_SENTENCES = 3              # ≈100 tokens
 
 import json, re, time, hashlib, os, logging
 import requests
+import feedparser
+from urllib.parse import urljoin
+
 from bs4 import BeautifulSoup
 from newspaper import Article, Config
 from urllib.parse import urljoin
