@@ -68,11 +68,22 @@ def get_rocketlab_urls():
 
 def get_capella_urls():
     """
-    Reads Capella Space press-release RSS feed, returns absolute URLs.
+    Yield full URLs of Capella *Press Releases* cards from /media page.
     """
-    feed = feedparser.parse("https://www.capellaspace.com/media/feed/")
-    for entry in feed.entries:
-        yield entry.link
+    base = "https://www.capellaspace.com"
+    res  = requests.get(f"{base}/media", headers=HEADERS, timeout=30)
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    # Each card looks like:
+    # <a class="resource-card" href="/2025/06/11/boxmica-becomes-capella...">
+    #     <span class="resource-type">Press Releases</span>
+    #     ...
+    # </a>
+    for card in soup.select("a.resource-card"):
+        label = card.select_one("span.resource-type")
+        if label and label.get_text(strip=True).lower() == "press releases":
+            yield urljoin(base, card["href"])
+
 
 
 def get_spacewatch_urls():
