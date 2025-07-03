@@ -80,8 +80,12 @@ def get_spacewatch_urls():
         yield entry.link
 
 
-SCRAPER_FUNCS = [get_iceye_urls, get_rocketlab_urls,
-                 get_capella_urls, get_spacewatch_urls]
+SCRAPER_FUNCS = [
+    get_iceye_urls,
+    get_rocketlab_urls,
+    get_capella_urls,
+    get_spacewatch_urls,
+]
 
 # ---------- 3. SUMMARY ------------------------------------------------------
 def summarise(url: str) -> tuple[str, str]:
