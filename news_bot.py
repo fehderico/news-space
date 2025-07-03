@@ -63,18 +63,22 @@ def get_rocketlab_urls():
             yield urljoin(SOURCES["rocketlab"], a["href"])
 
 def get_capella_urls():
-    soup = BeautifulSoup(requests.get(SOURCES["capella"], headers=HEADERS,
-                                      timeout=20).text, "html.parser")
-    press_section = soup.find("h2", string=re.compile("Press Releases", re.I))
-    if press_section:
-        for card in press_section.find_all_next("a", href=True, limit=20):
-            yield card["href"]
+    """
+    Reads Capella Space press-release RSS feed, returns absolute URLs.
+    """
+    feed = feedparser.parse("https://www.capellaspace.com/media/feed/")
+    for entry in feed.entries:
+        yield entry.link
+
 
 def get_spacewatch_urls():
-    soup = BeautifulSoup(requests.get(SOURCES["spacewatch"], headers=HEADERS,
-                                      timeout=20).text, "html.parser")
-    for h3 in soup.select("h3 a[href]"):
-        yield h3["href"]
+    """
+    Reads Spacewatch Global news RSS feed.
+    """
+    feed = feedparser.parse("https://spacewatch.global/news/feed/")
+    for entry in feed.entries:
+        yield entry.link
+
 
 SCRAPER_FUNCS = [get_iceye_urls, get_rocketlab_urls,
                  get_capella_urls, get_spacewatch_urls]
