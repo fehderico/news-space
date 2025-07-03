@@ -74,15 +74,11 @@ def get_capella_urls():
     res  = requests.get(f"{base}/media", headers=HEADERS, timeout=30)
     soup = BeautifulSoup(res.text, "html.parser")
 
-    # Each card looks like:
-    # <a class="resource-card" href="/2025/06/11/boxmica-becomes-capella...">
-    #     <span class="resource-type">Press Releases</span>
-    #     ...
-    # </a>
     for card in soup.select("a.resource-card"):
-        label = card.select_one("span.resource-type")
-        if label and label.get_text(strip=True).lower() == "press releases":
+        tag = card.select_one("div.category-tag")               # ← correct chip
+        if tag and tag.get_text(strip=True).lower() == "press releases":
             yield urljoin(base, card["href"])
+
 
 
 
@@ -137,20 +133,31 @@ def send_slack(title: str, summary: str, url: str):
 def main():
     seen = load_cache()
     new_seen = set()
+
     for fn in SCRAPER_FUNCS:
-        for url in fn():
-            key = hash_url(url)
+        logging.info("Running scraper: %s", fn.__name__)   # inside the loop
+        found = False                                      # inside the loop
+
+        for entry in fn():                                 # still indented
+            found = True
+            url   = entry.link if hasattr(entry, "link") else entry
+            descr = getattr(entry, "summary", "") if hasattr(entry, "summary") else ""
+            key   = hash_url(url)
+
             if key in seen or key in new_seen:
                 continue
             try:
-                title, summary = summarise(url)
+                title, summary = summarise(url, descr)     # pass feed summary
                 send_slack(title, summary, url)
                 logging.info("Posted %s", title)
                 new_seen.add(key)
             except Exception as e:
                 logging.error("Failed on %s : %s", url, e)
+
+        if not found:                                      # still inside outer loop
+            logging.warning("Scraper %s returned ZERO URLs", fn.__name__)
+
+    # after the outer loop finishes
     save_cache(seen.union(new_seen))
 
-if __name__ == "__main__":
-    main()
 
