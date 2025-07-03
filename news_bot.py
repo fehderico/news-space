@@ -7,7 +7,10 @@ Runs happily on the free GitHub Actions runner.
 """
 
 # ---------- 1. SETTINGS you may touch ---------------------------------------
-WEBHOOK_URL = "https://hooks.slack.com/services/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"   # <── replace this
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+if not WEBHOOK_URL:
+    raise RuntimeError("Set WEBHOOK_URL environment variable or secret.")
+   # <── replace this
 
 SOURCES = {
     "iceye":     "https://www.iceye.com/newsroom/press-releases",
