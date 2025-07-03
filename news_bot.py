@@ -105,18 +105,35 @@ def get_rocketlab_urls():
         if a.text.strip().endswith("Read more"):
             yield urljoin(SOURCES["rocketlab"], a["href"])
 
-def get_capella_urls():
-    """
-    1. Load /media
-    2. Click the "Press Releases" filter
-    3. Scrape each card link
-    """
-    url = "https://www.capellaspace.com/media"
-    links = click_then_get_links(url,
-                                 click_text="Press Releases",
-                                 card_selector="a.resource-card-link")
-    logging.info("Capella click-agent got %s links", len(links))
-    return links
+def get_capella_urls(max_cards: int = 30):
+    base  = "https://www.capellaspace.com"
+    start = f"{base}/media"
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page    = browser.new_page()
+        page.goto(start, wait_until="networkidle", timeout=30000)
+
+        logging.info("🌐 Capella loaded /media, DOM length %s",
+                     len(page.content()))                       # ← 1
+
+        page.click("text=/press releases/i", timeout=10000)
+
+        # Wait up to 15 s for *any* injected card to appear
+        try:
+            page.wait_for_selector("a.resource-card[href]", timeout=15000)
+            logging.info("✔️  Cards injected; DOM length %s",
+                         len(page.content()))                   # ← 2
+        except:
+            logging.warning("❌ No cards appeared after click")  # ← 3
+            browser.close()
+            return []
+
+        links = page.locator("a.resource-card[href]").evaluate_all(
+                     "els => els.map(e => e.href)")
+        browser.close()
+    return links[:max_cards]
+
 
 
 def get_spacewatch_urls():
