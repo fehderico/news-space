@@ -6,6 +6,15 @@ new article, and posts one Slack message per article.
 Runs happily on the free GitHub Actions runner.
 """
 
+import json, re, time, hashlib, os, logging
+import requests
+import feedparser
+from urllib.parse import urljoin
+
+from bs4 import BeautifulSoup
+from newspaper import Article, Config
+from urllib.parse import urljoin
+
 # ---------- 1. SETTINGS you may touch ---------------------------------------
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 if not WEBHOOK_URL:
@@ -23,14 +32,6 @@ CACHE_FILE = "sent_urls.json"      # remembers what we already posted
 SUMMARY_SENTENCES = 3              # ≈100 tokens
 # ---------------------------------------------------------------------------
 
-import json, re, time, hashlib, os, logging
-import requests
-import feedparser
-from urllib.parse import urljoin
-
-from bs4 import BeautifulSoup
-from newspaper import Article, Config
-from urllib.parse import urljoin
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s  %(levelname)s  %(message)s")
